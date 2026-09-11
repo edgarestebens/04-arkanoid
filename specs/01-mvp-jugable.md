@@ -1,6 +1,6 @@
 # SPEC 01 — MVP jugable de Arkanoid
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** —
 > **Date:** 2026-09-10
 > **Objective:** Entregar un Arkanoid jugable en el navegador (HTML/CSS/JS, cero dependencias) con un nivel, tres vidas, puntuación básica y overlay de victoria o game over.
@@ -72,17 +72,17 @@ Convenciones:
 
 ## Acceptance criteria
 
-- [ ] Abrir `index.html` en el navegador carga el juego sin errores en consola.
-- [ ] El canvas mide exactamente 800×600 px.
-- [ ] La pala se controla con teclado y ratón a la vez, sin salir del canvas.
-- [ ] La bola empieza pegada; clic o Espacio la lanzan.
-- [ ] Hay un muro de 10 columnas × 6 filas; cada bloque roto suma exactamente 10 puntos.
-- [ ] Hay 3 vidas; al caer la bola se resta una; a 0 vidas se muestra overlay de game over.
-- [ ] Al destruir todos los bloques se muestra overlay de victoria.
-- [ ] Desde el overlay, tecla o clic reinicia score, vidas y nivel.
-- [ ] Se usan sprites del sheet (pala, bola, bloques) y hay explosión breve al romper.
-- [ ] Suenan rebote y rotura con los mp3 de `assets/sounds/`.
-- [ ] No hay dependencias externas (sin npm/CDN de motores).
+- [x] Abrir `index.html` en el navegador carga el juego sin errores en consola.
+- [x] El canvas mide exactamente 800×600 px.
+- [x] La pala se controla con teclado y ratón a la vez, sin salir del canvas.
+- [x] La bola empieza pegada; clic o Espacio la lanzan.
+- [x] Hay un muro de 10 columnas × 6 filas; cada bloque roto suma exactamente 10 puntos.
+- [x] Hay 3 vidas; al caer la bola se resta una; a 0 vidas se muestra overlay de game over.
+- [x] Al destruir todos los bloques se muestra overlay de victoria.
+- [x] Desde el overlay, tecla o clic reinicia score, vidas y nivel.
+- [x] Se usan sprites del sheet (pala, bola, bloques) y hay explosión breve al romper.
+- [x] Suenan rebote y rotura con los mp3 de `assets/sounds/`.
+- [x] No hay dependencias externas (sin npm/CDN de motores).
 
 ## Decisions
 

@@ -15,9 +15,9 @@ const POINTS_PER_BRICK = 10;
 const MAX_LIVES = 3;
 const BRICK_COLS = 10;
 const BRICK_ROWS = 6;
-const BRICK_GAP = 4;
-const BRICK_TOP = 60;
-const BRICK_SIDE = 40;
+const BRICK_GAP = 6;
+const BRICK_TOP = 64;
+const BRICK_SIDE = 72;
 const BRICK_W = ( CANVAS_W - BRICK_SIDE * 2 - BRICK_GAP * ( BRICK_COLS - 1 ) ) / BRICK_COLS;
 const BRICK_H = BRICK_W / 2;
 
@@ -365,8 +365,20 @@ function drawHud() {
   ctx.font = '16px system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText( 'Score: ' + state.score, 16, 28 );
-  ctx.textAlign = 'right';
-  ctx.fillText( 'Lives: ' + state.lives, CANVAS_W - 16, 28 );
+
+  const lifeSize = 16;
+  const lifeGap = 6;
+  const lifeY = 12;
+  for ( let i = 0; i < state.lives; i++ ) {
+    const x = CANVAS_W - 16 - ( i + 1 ) * lifeSize - i * lifeGap;
+    if ( spritesReady ) {
+      drawSprite( ctx, 'ball', x, lifeY, lifeSize, lifeSize );
+    } else {
+      ctx.beginPath();
+      ctx.arc( x + lifeSize / 2, lifeY + lifeSize / 2, lifeSize / 2, 0, Math.PI * 2 );
+      ctx.fill();
+    }
+  }
 }
 
 function draw() {
