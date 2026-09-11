@@ -1,6 +1,6 @@
 # SPEC 02 — Destrucción de bloques con animación
 
-> **Status:** Borrador
+> **Status:** Aprobado
 > **Depends on:** SPEC 01
 > **Date:** 2026-09-11
 > **Objective:** Formalizar y dejar verificable la destrucción de ladrillos con la animación de explosión ya definida en los assets del spritesheet, +10 puntos y sonido de rotura.
