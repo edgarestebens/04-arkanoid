@@ -58,4 +58,5 @@ body {
 .overlay-content p {
   font-size: 1.1rem;
   opacity: 0.9;
+  line-height: 1.5;
 }

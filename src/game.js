@@ -102,7 +102,30 @@ function loseLife() {
   state.ball.glued = true;
   state.ball.vx = 0;
   state.ball.vy = 0;
-  showOverlay( 'Game Over', 'Puntuación: ' + state.score );
+  showOverlay( 'Game Over', 'Puntuación: ' + state.score + '<br>Tecla o clic para reiniciar' );
+}
+
+function checkWin() {
+  if ( state.phase !== 'playing' ) return;
+  for ( let i = 0; i < state.bricks.length; i++ ) {
+    if ( state.bricks[ i ].alive ) return;
+  }
+  state.phase = 'won';
+  state.ball.glued = true;
+  state.ball.vx = 0;
+  state.ball.vy = 0;
+  showOverlay( '¡Victoria!', 'Puntuación: ' + state.score + '<br>Tecla o clic para reiniciar' );
+}
+
+function resetGame() {
+  state.score = 0;
+  state.lives = MAX_LIVES;
+  state.phase = 'ready';
+  state.bricks = createBricks();
+  state.explosions = [];
+  state.paddle.x = ( CANVAS_W - PADDLE_W ) / 2;
+  stickBallToPaddle();
+  hideOverlay();
 }
 
 function createBricks() {
@@ -160,6 +183,7 @@ function destroyBrick( brick ) {
     startedAt: performance.now(),
   } );
   playBreakSound();
+  checkWin();
 }
 
 function clearCanvas() {
@@ -366,6 +390,11 @@ function setKey( code, isDown ) {
 }
 
 window.addEventListener( 'keydown', ( e ) => {
+  if ( state.phase === 'won' || state.phase === 'lost' ) {
+    e.preventDefault();
+    resetGame();
+    return;
+  }
   setKey( e.code, true );
   if ( e.code === 'Space' ) {
     e.preventDefault();
@@ -389,9 +418,16 @@ canvas.addEventListener( 'mousemove', ( e ) => {
   clampPaddle();
 } );
 
-canvas.addEventListener( 'click', () => {
+function handleClick() {
+  if ( state.phase === 'won' || state.phase === 'lost' ) {
+    resetGame();
+    return;
+  }
   launchBall();
-} );
+}
+
+canvas.addEventListener( 'click', handleClick );
+overlayEl.addEventListener( 'click', handleClick );
 
 state.bricks = createBricks();
 stickBallToPaddle();
