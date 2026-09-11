@@ -12,6 +12,7 @@ const BALL_R = 8;
 const BALL_SPEED = 5;
 
 const POINTS_PER_BRICK = 10;
+const MAX_LIVES = 3;
 const BRICK_COLS = 10;
 const BRICK_ROWS = 6;
 const BRICK_GAP = 4;
@@ -24,8 +25,10 @@ const ROW_COLORS = [ 'red', 'hotpink', 'yellow', 'green', 'cyan', 'magenta' ];
 
 const canvas = document.getElementById( 'game-canvas' );
 const ctx = canvas.getContext( '2d' );
+const overlayEl = document.getElementById( 'overlay' );
 
 const sfxBreak = new Audio( 'assets/sounds/break-sound.mp3' );
+const sfxBounce = new Audio( 'assets/sounds/ball-bounce.mp3' );
 
 const keys = {
   left: false,
@@ -34,6 +37,7 @@ const keys = {
 
 const state = {
   score: 0,
+  lives: MAX_LIVES,
   phase: 'ready', // 'ready' | 'playing' | 'won' | 'lost'
   paddle: {
     x: ( CANVAS_W - PADDLE_W ) / 2,
@@ -55,14 +59,50 @@ const state = {
 
 let spritesReady = false;
 
-function playBreakSound() {
+function playSound( base ) {
   try {
-    const s = sfxBreak.cloneNode();
+    const s = base.cloneNode();
     s.volume = 0.7;
     s.play().catch( () => {} );
   } catch ( e ) {
     // Autoplays bloqueados: se ignora hasta interacción previa
   }
+}
+
+function playBreakSound() {
+  playSound( sfxBreak );
+}
+
+function playBounceSound() {
+  playSound( sfxBounce );
+}
+
+function showOverlay( title, subtitle ) {
+  overlayEl.innerHTML =
+    '<div class="overlay-content">' +
+    '<h1>' + title + '</h1>' +
+    '<p>' + subtitle + '</p>' +
+    '</div>';
+  overlayEl.hidden = false;
+}
+
+function hideOverlay() {
+  overlayEl.hidden = true;
+  overlayEl.innerHTML = '';
+}
+
+function loseLife() {
+  state.lives -= 1;
+  if ( state.lives > 0 ) {
+    state.phase = 'ready';
+    stickBallToPaddle();
+    return;
+  }
+  state.phase = 'lost';
+  state.ball.glued = true;
+  state.ball.vx = 0;
+  state.ball.vy = 0;
+  showOverlay( 'Game Over', 'Puntuación: ' + state.score );
 }
 
 function createBricks() {
@@ -128,6 +168,7 @@ function clearCanvas() {
 }
 
 function updatePaddle() {
+  if ( state.phase === 'lost' || state.phase === 'won' ) return;
   const p = state.paddle;
   if ( keys.left ) p.x -= PADDLE_SPEED;
   if ( keys.right ) p.x += PADDLE_SPEED;
@@ -156,6 +197,7 @@ function collideBallPaddle() {
   b.vx = speed * Math.sin( angle );
   b.vy = -speed * Math.cos( angle );
   b.y = p.y - b.r;
+  playBounceSound();
 }
 
 function collideBallBricks() {
@@ -198,6 +240,8 @@ function collideBallBricks() {
 function updateBall() {
   const b = state.ball;
 
+  if ( state.phase === 'lost' || state.phase === 'won' ) return;
+
   if ( b.glued ) {
     stickBallToPaddle();
     return;
@@ -209,14 +253,22 @@ function updateBall() {
   if ( b.x - b.r < 0 ) {
     b.x = b.r;
     b.vx = Math.abs( b.vx );
+    playBounceSound();
   } else if ( b.x + b.r > CANVAS_W ) {
     b.x = CANVAS_W - b.r;
     b.vx = -Math.abs( b.vx );
+    playBounceSound();
   }
 
   if ( b.y - b.r < 0 ) {
     b.y = b.r;
     b.vy = Math.abs( b.vy );
+    playBounceSound();
+  }
+
+  if ( b.y - b.r > CANVAS_H ) {
+    loseLife();
+    return;
   }
 
   collideBallPaddle();
@@ -289,6 +341,8 @@ function drawHud() {
   ctx.font = '16px system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText( 'Score: ' + state.score, 16, 28 );
+  ctx.textAlign = 'right';
+  ctx.fillText( 'Lives: ' + state.lives, CANVAS_W - 16, 28 );
 }
 
 function draw() {
@@ -327,6 +381,7 @@ window.addEventListener( 'keyup', ( e ) => {
 } );
 
 canvas.addEventListener( 'mousemove', ( e ) => {
+  if ( state.phase === 'lost' || state.phase === 'won' ) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const mouseX = ( e.clientX - rect.left ) * scaleX;
