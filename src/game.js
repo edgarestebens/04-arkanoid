@@ -38,7 +38,7 @@ const keys = {
 const state = {
   score: 0,
   lives: MAX_LIVES,
-  phase: 'ready', // 'ready' | 'playing' | 'won' | 'lost'
+  phase: 'ready', // 'ready' | 'playing' | 'paused' | 'won' | 'lost'
   paddle: {
     x: ( CANVAS_W - PADDLE_W ) / 2,
     y: PADDLE_Y,
@@ -58,6 +58,8 @@ const state = {
 };
 
 let spritesReady = false;
+let phaseBeforePause = 'ready';
+let pausedAt = 0;
 
 function playSound( base ) {
   try {
@@ -121,11 +123,37 @@ function resetGame() {
   state.score = 0;
   state.lives = MAX_LIVES;
   state.phase = 'ready';
+  phaseBeforePause = 'ready';
+  pausedAt = 0;
   state.bricks = createBricks();
   state.explosions = [];
   state.paddle.x = ( CANVAS_W - PADDLE_W ) / 2;
   stickBallToPaddle();
   hideOverlay();
+}
+
+function pauseGame() {
+  if ( state.phase !== 'ready' && state.phase !== 'playing' ) return;
+  phaseBeforePause = state.phase;
+  pausedAt = performance.now();
+  state.phase = 'paused';
+  showOverlay( 'Pausa', 'Esc / P o clic para continuar' );
+}
+
+function resumeGame() {
+  if ( state.phase !== 'paused' ) return;
+  const pauseMs = performance.now() - pausedAt;
+  for ( let i = 0; i < state.explosions.length; i++ ) {
+    state.explosions[ i ].startedAt += pauseMs;
+  }
+  state.phase = phaseBeforePause;
+  pausedAt = 0;
+  hideOverlay();
+}
+
+function togglePause() {
+  if ( state.phase === 'paused' ) resumeGame();
+  else pauseGame();
 }
 
 function createBricks() {
@@ -164,7 +192,7 @@ function stickBallToPaddle() {
 
 function launchBall() {
   const b = state.ball;
-  if ( !b.glued || state.phase === 'won' || state.phase === 'lost' ) return;
+  if ( !b.glued || state.phase === 'won' || state.phase === 'lost' || state.phase === 'paused' ) return;
   b.glued = false;
   b.vx = BALL_SPEED * ( Math.random() < 0.5 ? -1 : 1 ) * 0.6;
   b.vy = -BALL_SPEED;
@@ -192,7 +220,7 @@ function clearCanvas() {
 }
 
 function updatePaddle() {
-  if ( state.phase === 'lost' || state.phase === 'won' ) return;
+  if ( state.phase === 'lost' || state.phase === 'won' || state.phase === 'paused' ) return;
   const p = state.paddle;
   if ( keys.left ) p.x -= PADDLE_SPEED;
   if ( keys.right ) p.x += PADDLE_SPEED;
@@ -264,7 +292,7 @@ function collideBallBricks() {
 function updateBall() {
   const b = state.ball;
 
-  if ( state.phase === 'lost' || state.phase === 'won' ) return;
+  if ( state.phase === 'lost' || state.phase === 'won' || state.phase === 'paused' ) return;
 
   if ( b.glued ) {
     stickBallToPaddle();
@@ -307,6 +335,7 @@ function updateExplosions() {
 }
 
 function update() {
+  if ( state.phase === 'paused' ) return;
   updatePaddle();
   updateBall();
   updateExplosions();
@@ -407,6 +436,12 @@ window.addEventListener( 'keydown', ( e ) => {
     resetGame();
     return;
   }
+  if ( e.code === 'Escape' || e.code === 'KeyP' ) {
+    e.preventDefault();
+    togglePause();
+    return;
+  }
+  if ( state.phase === 'paused' ) return;
   setKey( e.code, true );
   if ( e.code === 'Space' ) {
     e.preventDefault();
@@ -422,7 +457,7 @@ window.addEventListener( 'keyup', ( e ) => {
 } );
 
 canvas.addEventListener( 'mousemove', ( e ) => {
-  if ( state.phase === 'lost' || state.phase === 'won' ) return;
+  if ( state.phase === 'lost' || state.phase === 'won' || state.phase === 'paused' ) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const mouseX = ( e.clientX - rect.left ) * scaleX;
@@ -433,6 +468,10 @@ canvas.addEventListener( 'mousemove', ( e ) => {
 function handleClick() {
   if ( state.phase === 'won' || state.phase === 'lost' ) {
     resetGame();
+    return;
+  }
+  if ( state.phase === 'paused' ) {
+    resumeGame();
     return;
   }
   launchBall();
