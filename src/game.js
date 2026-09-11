@@ -76,6 +76,32 @@ function updatePaddle() {
   clampPaddle();
 }
 
+function collideBallPaddle() {
+  const b = state.ball;
+  const p = state.paddle;
+
+  // Solo rebota si la bola baja (evita pegarse a la pala)
+  if ( b.vy <= 0 ) return;
+
+  const closestX = Math.max( p.x, Math.min( b.x, p.x + p.w ) );
+  const closestY = Math.max( p.y, Math.min( b.y, p.y + p.h ) );
+  const dx = b.x - closestX;
+  const dy = b.y - closestY;
+
+  if ( dx * dx + dy * dy > b.r * b.r ) return;
+
+  // offset ∈ [-1, 1]: centro = 0, bordes = ±1
+  const hit = ( b.x - p.x ) / p.w;
+  const offset = Math.max( -1, Math.min( 1, ( hit - 0.5 ) * 2 ) );
+  const maxAngle = ( Math.PI / 3 ); // 60°
+  const angle = offset * maxAngle;
+  const speed = BALL_SPEED;
+
+  b.vx = speed * Math.sin( angle );
+  b.vy = -speed * Math.cos( angle );
+  b.y = p.y - b.r;
+}
+
 function updateBall() {
   const b = state.ball;
 
@@ -101,6 +127,8 @@ function updateBall() {
     b.y = b.r;
     b.vy = Math.abs( b.vy );
   }
+
+  collideBallPaddle();
 }
 
 function update() {
