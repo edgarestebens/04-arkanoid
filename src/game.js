@@ -9,7 +9,9 @@ const PADDLE_SPEED = 8;
 const PADDLE_Y = CANVAS_H - 40;
 
 const BALL_R = 8;
-const BALL_SPEED = 5;
+const BALL_SPEED_BASE = 5;
+const BALL_SPEED_STEP = 0.85;
+const MAX_LEVELS = 5;
 
 const POINTS_PER_BRICK = 10;
 const MAX_LIVES = 3;
@@ -38,6 +40,7 @@ const keys = {
 const state = {
   score: 0,
   lives: MAX_LIVES,
+  level: 1,
   phase: 'ready', // 'ready' | 'playing' | 'paused' | 'won' | 'lost'
   paddle: {
     x: ( CANVAS_W - PADDLE_W ) / 2,
@@ -79,11 +82,12 @@ function playBounceSound() {
   playSound( sfxBounce );
 }
 
-function showOverlay( title, subtitle ) {
+function showOverlay( title, subtitle, actionsHtml ) {
   overlayEl.innerHTML =
     '<div class="overlay-content">' +
     '<h1>' + title + '</h1>' +
     '<p>' + subtitle + '</p>' +
+    ( actionsHtml || '' ) +
     '</div>';
   overlayEl.hidden = false;
 }
@@ -107,21 +111,12 @@ function loseLife() {
   showOverlay( 'Game Over', 'Puntuación: ' + state.score + '<br>Tecla o clic para reiniciar' );
 }
 
-function checkWin() {
-  if ( state.phase !== 'playing' ) return;
-  for ( let i = 0; i < state.bricks.length; i++ ) {
-    if ( state.bricks[ i ].alive ) return;
-  }
-  state.phase = 'won';
-  state.ball.glued = true;
-  state.ball.vx = 0;
-  state.ball.vy = 0;
-  showOverlay( '¡Victoria!', 'Puntuación: ' + state.score + '<br>Tecla o clic para reiniciar' );
+function ballSpeed() {
+  return BALL_SPEED_BASE + ( state.level - 1 ) * BALL_SPEED_STEP;
 }
 
-function resetGame() {
-  state.score = 0;
-  state.lives = MAX_LIVES;
+function startLevel( level ) {
+  state.level = level;
   state.phase = 'ready';
   phaseBeforePause = 'ready';
   pausedAt = 0;
@@ -132,12 +127,54 @@ function resetGame() {
   hideOverlay();
 }
 
+function checkWin() {
+  if ( state.phase !== 'playing' ) return;
+  for ( let i = 0; i < state.bricks.length; i++ ) {
+    if ( state.bricks[ i ].alive ) return;
+  }
+
+  state.ball.glued = true;
+  state.ball.vx = 0;
+  state.ball.vy = 0;
+
+  if ( state.level < MAX_LEVELS ) {
+    startLevel( state.level + 1 );
+    return;
+  }
+
+  state.phase = 'won';
+  showOverlay( '¡Victoria!', 'Puntuación: ' + state.score + '<br>Tecla o clic para reiniciar' );
+}
+
+function resetGame() {
+  state.score = 0;
+  state.lives = MAX_LIVES;
+  startLevel( 1 );
+}
+
+function pauseOverlayMessage() {
+  let msg = 'Esc / P o Continuar para seguir';
+  if ( state.level < MAX_LEVELS ) {
+    msg += '<br>N o Siguiente nivel para pasar al ' + ( state.level + 1 );
+  }
+  return msg;
+}
+
 function pauseGame() {
   if ( state.phase !== 'ready' && state.phase !== 'playing' ) return;
   phaseBeforePause = state.phase;
   pausedAt = performance.now();
   state.phase = 'paused';
-  showOverlay( 'Pausa', 'Esc / P o clic para continuar' );
+
+  let actions =
+    '<div class="overlay-actions">' +
+    '<button type="button" data-action="resume">Continuar</button>';
+  if ( state.level < MAX_LEVELS ) {
+    actions += '<button type="button" data-action="next-level">Siguiente nivel</button>';
+  }
+  actions += '</div>';
+
+  showOverlay( 'Pausa', pauseOverlayMessage(), actions );
 }
 
 function resumeGame() {
@@ -149,6 +186,11 @@ function resumeGame() {
   state.phase = phaseBeforePause;
   pausedAt = 0;
   hideOverlay();
+}
+
+function skipToNextLevel() {
+  if ( state.phase !== 'paused' || state.level >= MAX_LEVELS ) return;
+  startLevel( state.level + 1 );
 }
 
 function togglePause() {
@@ -193,9 +235,10 @@ function stickBallToPaddle() {
 function launchBall() {
   const b = state.ball;
   if ( !b.glued || state.phase === 'won' || state.phase === 'lost' || state.phase === 'paused' ) return;
+  const speed = ballSpeed();
   b.glued = false;
-  b.vx = BALL_SPEED * ( Math.random() < 0.5 ? -1 : 1 ) * 0.6;
-  b.vy = -BALL_SPEED;
+  b.vx = speed * ( Math.random() < 0.5 ? -1 : 1 ) * 0.6;
+  b.vy = -speed;
   state.phase = 'playing';
 }
 
@@ -244,7 +287,7 @@ function collideBallPaddle() {
   const offset = Math.max( -1, Math.min( 1, ( hit - 0.5 ) * 2 ) );
   const maxAngle = Math.PI / 3;
   const angle = offset * maxAngle;
-  const speed = BALL_SPEED;
+  const speed = ballSpeed();
 
   b.vx = speed * Math.sin( angle );
   b.vy = -speed * Math.cos( angle );
@@ -394,6 +437,9 @@ function drawHud() {
   ctx.font = '16px system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText( 'Score: ' + state.score, 16, 28 );
+  ctx.textAlign = 'center';
+  ctx.fillText( 'Nivel ' + state.level + '/' + MAX_LEVELS, CANVAS_W / 2, 28 );
+  ctx.textAlign = 'left';
 
   const lifeSize = 16;
   const lifeGap = 6;
@@ -441,7 +487,13 @@ window.addEventListener( 'keydown', ( e ) => {
     togglePause();
     return;
   }
-  if ( state.phase === 'paused' ) return;
+  if ( state.phase === 'paused' ) {
+    if ( e.code === 'KeyN' ) {
+      e.preventDefault();
+      skipToNextLevel();
+    }
+    return;
+  }
   setKey( e.code, true );
   if ( e.code === 'Space' ) {
     e.preventDefault();
@@ -465,12 +517,19 @@ canvas.addEventListener( 'mousemove', ( e ) => {
   clampPaddle();
 } );
 
-function handleClick() {
+function handleClick( e ) {
   if ( state.phase === 'won' || state.phase === 'lost' ) {
     resetGame();
     return;
   }
   if ( state.phase === 'paused' ) {
+    const action = e.target && e.target.getAttribute
+      ? e.target.getAttribute( 'data-action' )
+      : null;
+    if ( action === 'next-level' ) {
+      skipToNextLevel();
+      return;
+    }
     resumeGame();
     return;
   }
